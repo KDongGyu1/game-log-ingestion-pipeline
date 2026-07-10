@@ -2,11 +2,9 @@ services:
   redis:
     image: redis:7.4-alpine
     container_name: log-redis
-    restart: unless-stopped
-    command: [ "redis-server", "/usr/local/etc/redis/redis.conf" ]
+    command: [ "redis-server", "--appendonly", "yes" ]
     volumes:
       - redis-data:/data
-      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
     networks:
       - log-net
     healthcheck:
@@ -14,47 +12,25 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-      start_period: 5s
 
   api:
-    build:
-      context: ./api-server
-    image: supercent/log-api:latest
+    build: ./api-server
     container_name: log-api
-    restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
       REDIS_HOST: redis
-      REDIS_PORT: 6379
-      STREAM_KEY: game_logs
-      STREAM_MAXLEN: 1000000
     depends_on:
       redis:
         condition: service_healthy
     networks:
       - log-net
-    healthcheck:
-      test: [ "CMD", "curl", "-fsS", "http://localhost:8000/health" ]
-      interval: 10s
-      timeout: 3s
-      retries: 3
-      start_period: 10s
 
   consumer:
-    build:
-      context: ./consumer
-    image: supercent/log-consumer:latest
-    # container_name 지정 안 함 → replica 확장 가능
-    restart: unless-stopped
+    build: ./consumer
+    container_name: log-consumer
     environment:
       REDIS_HOST: redis
-      REDIS_PORT: 6379
-      STREAM_KEY: game_logs
-      GROUP_NAME: log_consumers
-      BATCH_SIZE: 100
-      BLOCK_MS: 5000
-      OUTPUT_PATH: /logs/game_logs.jsonl
     depends_on:
       redis:
         condition: service_healthy
@@ -62,14 +38,9 @@ services:
       - ./logs:/logs
     networks:
       - log-net
-    # 수평 확장 예시: docker-compose up -d --scale consumer=3
-    deploy:
-      replicas: 1
 
 networks:
   log-net:
-    driver: bridge
 
 volumes:
   redis-data:
-    driver: local

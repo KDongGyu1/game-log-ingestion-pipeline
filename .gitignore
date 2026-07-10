@@ -1,27 +1,13 @@
-# Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.egg-info/
+*.pyc
 .venv/
 venv/
 .env
+.vscode/
+.idea/
+.DS_Store
 
-# Logs (실제 로그 파일은 커밋 X, 디렉토리 구조만 유지)
 logs/*
 !logs/.gitkeep
 
-# IDE
-.vscode/
-.idea/
-*.swp
-.DS_Store
-
-# Terraform
-terraform/.terraform/
-terraform/*.tfstate
-terraform/*.tfstate.backup
-terraform/.terraform.lock.hcl
-
-# Docker
-*.log
+*.exe
