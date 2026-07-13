@@ -140,7 +140,7 @@ Statistics        Avg      Stdev        Max
 - **성공률 100%** (2xx: 10,000 / 5xx: 0)
 - **평균 처리량**: 712 req/s (단일 인스턴스, Docker Desktop 환경)
 
-> **처리량 해석**: 본 벤치마크는 로컬 Docker Desktop 환경에서 단일 Uvicorn 워커와 동기 Redis 클라이언트로 측정했습니다. 더 큰 트래픽은 API 인스턴스 수평 확장, 비동기 Redis 클라이언트, 관리형 메시지 브로커 전환으로 대응합니다.
+> **처리량 해석**: 본 벤치마크는 로컬 Docker Desktop 환경에서 단일 Uvicorn 워커로 측정했습니다. 더 큰 트래픽은 API 인스턴스 수평 확장, worker 수 조정, 관리형 메시지 브로커 전환으로 대응합니다.
 
 ### 4) Redis Stream 적재 확인
 
@@ -192,7 +192,7 @@ $ docker exec log-redis redis-cli XLEN game_logs
 
 ### API 서버 수평 확장
 - Uvicorn workers를 vCPU 수만큼 (`--workers N`)
-- `redis.asyncio`로 비동기 I/O 전환
+- API Task 수와 worker 수를 트래픽에 맞춰 조정
 - ECS Fargate + ALB로 인스턴스 오토스케일링
 
 ### 메시지 브로커 확장

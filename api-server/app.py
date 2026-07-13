@@ -2,7 +2,7 @@ import json
 import logging
 import os
 
-import redis
+import redis.asyncio as redis
 from fastapi import FastAPI, HTTPException, Request
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -17,9 +17,9 @@ r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
 
 @app.get("/health")
-def health():
+async def health():
     try:
-        r.ping()
+        await r.ping()
         return {"status": "healthy"}
     except redis.RedisError:
         raise HTTPException(status_code=503, detail="redis unavailable")
@@ -33,7 +33,7 @@ async def ingest_log(request: Request):
         raise HTTPException(status_code=400, detail="invalid JSON")
 
     try:
-        entry_id = r.xadd(STREAM_KEY, {"data": json.dumps(payload, ensure_ascii=False)})
+        entry_id = await r.xadd(STREAM_KEY, {"data": json.dumps(payload, ensure_ascii=False)})
         return {"status": "ok", "id": entry_id}
     except redis.RedisError as e:
         logger.exception("XADD failed")

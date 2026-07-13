@@ -3,6 +3,7 @@ services:
     image: redis:7.4-alpine
     container_name: log-redis
     command: [ "redis-server", "--appendonly", "yes" ]
+    restart: unless-stopped
     volumes:
       - redis-data:/data
     networks:
@@ -16,6 +17,7 @@ services:
   api:
     build: ./api-server
     container_name: log-api
+    restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
@@ -25,9 +27,16 @@ services:
         condition: service_healthy
     networks:
       - log-net
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" ]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
 
   consumer:
     build: ./consumer
+    restart: unless-stopped
     environment:
       REDIS_HOST: redis
     depends_on:

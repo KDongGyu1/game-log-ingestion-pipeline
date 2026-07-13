@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import socket
+import time
 
 import redis
 
@@ -66,16 +67,19 @@ def main():
 
     processed = 0
     while True:
-        processed += reclaim_stale_pending(client)
+        try:
+            processed += reclaim_stale_pending(client)
 
-        resp = client.xreadgroup(
-            groupname=GROUP_NAME,
-            consumername=CONSUMER_NAME,
-            streams={STREAM_KEY: ">"},
-            count=1000,
-            block=5000,
-        )
-        if not resp:
+            resp = client.xreadgroup(
+                groupname=GROUP_NAME,
+                consumername=CONSUMER_NAME,
+                streams={STREAM_KEY: ">"},
+                count=1000,
+                block=5000,
+            )
+        except redis.RedisError as e:
+            logger.warning(f"redis unavailable, retrying in 2s: {e}")
+            time.sleep(2)
             continue
 
         for _stream, entries in resp:
