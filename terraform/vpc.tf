@@ -47,8 +47,8 @@ resource "aws_subnet" "private" {
   }
 }
 
-# ---------- NAT Gateway (Private Subnet의 아웃바운드용) ----------
-# 비용 절약을 위해 단일 NAT 사용. HA가 필요하면 AZ마다 1개씩 배치.
+# ---------- NAT Gateway ----------
+# A single NAT Gateway keeps the sample architecture cost-conscious.
 resource "aws_eip" "nat" {
   domain = "vpc"
 

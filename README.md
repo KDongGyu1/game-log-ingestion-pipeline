@@ -1,6 +1,6 @@
 # 게임 로그 수집 파이프라인
 
-슈퍼센트 DevOps 엔지니어(전환형 인턴) 과제 제출본.
+슈퍼센트 DevOps 엔지니어(전환형 인턴) 과제
 
 초당 수만 건의 인게임 로그(유저 행동, 재화 소비, 시스템 에러 등)를 안정적으로 수집·적재하기 위한 Docker 기반 파이프라인입니다.
 
@@ -44,8 +44,8 @@
   - Consumer Group 기반 병렬 처리
   - **XACK 전까지 PEL(Pending Entries List)에 남고, XAUTOCLAIM으로 회수 가능 → 유실 방지**
   - AOF 활성화로 재시작 후 데이터 복구
-  - Kafka보다 경량, 과제 스코프에 적합
-- **Kafka는 언제?**: 초당 100K+, 다중 다운스트림 컨슈머, 장기 replay 필요 시. 과제 스코프 초과.
+  - Kafka보다 구성이 단순해 Docker Compose 테스트 환경에서 재현성이 높음
+- **Kafka 전환 기준**: 초당 100K+ 처리량, 다중 다운스트림, 장기 replay가 필요해지는 시점
 
 ### 유실 방지 3중 방어
 
@@ -62,7 +62,7 @@
 
 ### 기동
 
-동료 엔지니어가 처음부터 동일한 테스트 환경을 복제하는 한 줄 명령:
+테스트 환경 복제 명령어:
 
 ```bash
 git clone https://github.com/KDongGyu1/game-log-ingestion-pipeline.git && cd game-log-ingestion-pipeline && docker compose up -d --build
@@ -140,7 +140,7 @@ Statistics        Avg      Stdev        Max
 - **성공률 100%** (2xx: 10,000 / 5xx: 0)
 - **평균 처리량**: 712 req/s (단일 인스턴스, Docker Desktop 환경)
 
-> **처리량 해석**: 본 벤치마크는 로컬 Docker Desktop 환경에서 단일 Uvicorn 워커, 동기 Redis 클라이언트로 측정한 값입니다. 프로덕션에서 "초당 수만 건" 달성을 위한 확장 경로는 아래 [운영 확장안](#운영-확장안) 참조.
+> **처리량 해석**: 본 벤치마크는 로컬 Docker Desktop 환경에서 단일 Uvicorn 워커와 동기 Redis 클라이언트로 측정했습니다. 더 큰 트래픽은 API 인스턴스 수평 확장, 비동기 Redis 클라이언트, 관리형 메시지 브로커 전환으로 대응합니다.
 
 ### 4) Redis Stream 적재 확인
 
@@ -188,7 +188,7 @@ $ docker exec log-redis redis-cli XLEN game_logs
 
 ## 운영 확장안
 
-과제 스코프를 넘어선 실제 프로덕션 환경에서 "초당 수만 건" 달성 경로:
+더 큰 트래픽을 처리하기 위한 확장 방향:
 
 ### API 서버 수평 확장
 - Uvicorn workers를 vCPU 수만큼 (`--workers N`)
@@ -217,7 +217,7 @@ Consumer Group이 자동으로 메시지를 분산 소비합니다.
 
 ## 디렉토리 구조
 
-.
+
 ├── README.md
 ├── docker-compose.yml
 ├── .gitignore
@@ -251,3 +251,4 @@ Consumer Group이 자동으로 메시지를 분산 소비합니다.
 | 메시지 브로커 | Redis Streams | Consumer Group + AOF, Kafka 대비 경량 |
 | Consumer | Python + redis-py | 브로커와 동일 스택 유지 |
 | 오케스트레이션 | Docker Compose | 재현성, 단일 명령 기동 |
+| IaC | Terraform | AWS VPC, ALB, ECS, ElastiCache 구성 코드화 |

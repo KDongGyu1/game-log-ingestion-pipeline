@@ -9,7 +9,7 @@ resource "aws_cloudwatch_log_group" "api" {
 }
 
 # ---------- ECS Task Execution Role ----------
-# ECR pull, CloudWatch Logs 쓰기 권한
+# Allows ECS tasks to pull images and write CloudWatch logs.
 data "aws_iam_policy_document" "ecs_task_assume" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -125,7 +125,7 @@ resource "aws_ecs_service" "api" {
     container_port   = var.api_container_port
   }
 
-  # 배포 전략
+  # Rolling deployment settings.
   deployment_minimum_healthy_percent = 50
   deployment_maximum_percent         = 200
 
@@ -136,7 +136,7 @@ resource "aws_ecs_service" "api" {
   }
 }
 
-# ---------- Auto Scaling (트래픽 피크 대응) ----------
+# ---------- Auto Scaling ----------
 resource "aws_appautoscaling_target" "api" {
   max_capacity       = 10
   min_capacity       = var.api_desired_count

@@ -1,5 +1,5 @@
 # ---------- ALB Security Group ----------
-# 외부에서 HTTP 트래픽 수신
+# Receives HTTP traffic from the internet.
 resource "aws_security_group" "alb" {
   name        = "${var.project_name}-alb-sg"
   description = "Security group for ALB"
@@ -27,7 +27,7 @@ resource "aws_security_group" "alb" {
 }
 
 # ---------- ECS Task Security Group ----------
-# ALB에서만 트래픽 수신
+# Receives API traffic only from the ALB.
 resource "aws_security_group" "ecs_task" {
   name        = "${var.project_name}-ecs-task-sg"
   description = "Security group for ECS API tasks"
@@ -42,7 +42,7 @@ resource "aws_security_group" "ecs_task" {
   }
 
   egress {
-    description = "All outbound (Redis, S3, ECR, CloudWatch)"
+    description = "All outbound"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -55,7 +55,7 @@ resource "aws_security_group" "ecs_task" {
 }
 
 # ---------- ElastiCache Redis Security Group ----------
-# ECS Task에서만 6379 포트 수신 허용
+# Allows Redis traffic only from ECS tasks.
 resource "aws_security_group" "redis" {
   name        = "${var.project_name}-redis-sg"
   description = "Security group for ElastiCache Redis"

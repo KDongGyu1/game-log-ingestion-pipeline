@@ -19,7 +19,7 @@ resource "aws_lb_target_group" "api" {
   port        = var.api_container_port
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
-  target_type = "ip" # Fargate는 ip 타입 필수
+  target_type = "ip"
 
   health_check {
     enabled             = true
@@ -32,7 +32,7 @@ resource "aws_lb_target_group" "api" {
     unhealthy_threshold = 3
   }
 
-  # ECS에서 Target 등록/해제 시 대기 시간
+  # Wait time before deregistering ECS task targets.
   deregistration_delay = 30
 
   tags = {

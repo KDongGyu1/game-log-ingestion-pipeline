@@ -1,20 +1,14 @@
-# AWS 인프라 설계 및 Terraform (선택 과제)
+# AWS 인프라 설계 및 Terraform
 
-필수 과제에서 구축한 로그 수집 파이프라인을 **AWS 프로덕션 환경**으로 확장하기 위한 인프라 설계안 및 Terraform 코드입니다.
-
-> **참고**: 과제 요구사항에 따라 **실제 리소스는 프로비저닝하지 않으며**, 설계안과 IaC 코드만 제출합니다.
+로그 수집 파이프라인을 AWS 관리형 인프라로 구성하기 위한 설계안과 Terraform 코드입니다.
 
 ## 아키텍처 다이어그램
 
 ```
                               [ Internet ]
-                                    │
-                                    ▼
-                            ┌──────────────┐
-                            │  Route 53    │  (선택)
-                            └──────┬───────┘
                                    │
-                    ┌──────────────▼──────────────┐
+                                   ▼
+                    ┌─────────────────────────────┐
                     │            ALB              │  ← Public Subnet (AZ-a, AZ-c)
                     │      (HTTP → :80)           │     외부 트래픽 진입점
                     └──────────────┬──────────────┘
@@ -34,17 +28,6 @@
                        │  ElastiCache Redis    │  ← Private Subnet (Multi-AZ)
                        │  (Streams + Backup)   │     Primary + Replica
                        │  Multi-AZ Failover    │
-                       └───────────┬───────────┘
-                                   │  (XREADGROUP)
-                                   ▼
-                       ┌───────────────────────┐
-                       │   ECS Fargate         │  ← Private Subnet
-                       │   Consumer Task       │     Auto Scaling
-                       └───────────┬───────────┘
-                                   │
-                       ┌───────────▼───────────┐
-                       │        S3             │  ← 원본 로그 아카이빙
-                       │  (Parquet, Lifecycle) │     장기 보관
                        └───────────────────────┘
 
   ┌──────────────────────────────────────────────────────────────┐
@@ -82,22 +65,22 @@
   - Redis: ECS에서만 6379 허용
 - Private Subnet의 아웃바운드는 NAT Gateway 경유
 
-## 필수 과제와의 매핑
+## AWS 구성 요약
 
-| 필수 과제 (로컬) | AWS 프로덕션 매핑 |
+| 영역 | 구성 |
 |---|---|
-| FastAPI 컨테이너 | ECS Fargate Task (API) |
-| Redis Streams (Docker) | ElastiCache for Redis (Multi-AZ) |
-| Consumer 컨테이너 | ECS Fargate Task (Consumer) |
-| Docker Volume (AOF) | ElastiCache 자동 백업 + S3 아카이빙 |
-| Docker Network | VPC + Security Group |
-| localhost:8000 | ALB DNS (Route53 도메인) |
+| 네트워크 | VPC, Public Subnet 2개, Private Subnet 2개 |
+| 진입점 | Public Subnet의 Application Load Balancer |
+| API 실행 환경 | Private Subnet의 ECS Fargate Service |
+| 로그 적재 | Private Subnet의 ElastiCache Redis Replication Group |
+| 보안 | ALB, ECS Task, Redis Security Group 분리 |
+| 확장 | ECS Service Auto Scaling, Redis Multi-AZ Failover |
 
 ## Terraform 파일 구조
 
 ```
 terraform/
-├── main.tf              # Provider 설정, 백엔드
+├── main.tf              # Provider 설정
 ├── variables.tf         # 변수 정의
 ├── vpc.tf               # VPC, Subnet, IGW, NAT Gateway, Route Table
 ├── security.tf          # Security Group (ALB, ECS, Redis)
@@ -108,9 +91,8 @@ terraform/
 └── README.md            # 본 문서
 ```
 
-## 코드화 범위
+## Terraform 구현 범위
 
-### ✅ Terraform 코드로 구현
 - VPC, Subnet (Public/Private × 2AZ)
 - Internet Gateway, NAT Gateway, Route Table
 - Security Group (ALB, ECS Task, Redis)
@@ -121,18 +103,7 @@ terraform/
 - CloudWatch Log Group
 - IAM Role (ECS Task Execution, Task Role)
 
-### 📋 설계만 서술 (코드 생략)
-과제 요구인 "일부 핵심 인프라"에 집중하기 위해 아래 항목은 설계만 문서화합니다.
-
-- **Consumer ECS Service**: API Service와 동일한 패턴으로 확장 가능 (Task Definition의 이미지와 command만 다름).
-- **S3 아카이빙**: `aws_s3_bucket` + Lifecycle Policy로 90일 후 Glacier 전환.
-- **Route53**: `aws_route53_record`로 ALB Alias 레코드 생성.
-- **ACM**: HTTPS를 위한 인증서 발급 및 ALB Listener 연동.
-- **ECR**: API/Consumer 이미지 저장소.
-
-## 실행 절차 (참고용)
-
-> 실제 apply는 하지 않지만, 재현성을 위한 절차입니다.
+## 검증 절차
 
 ### 1. 사전 요구사항
 ```bash
@@ -156,22 +127,13 @@ terraform validate
 # 포맷 정리
 terraform fmt
 
-# 실행 계획 확인 (실제 생성 없음)
+# 실행 계획 확인
 terraform plan -var 'api_image=123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/game-log-api:latest'
 ```
 
-### 3. 실제 배포 (본 과제에서는 실행하지 않음)
+### 3. 이미지 변수
 ```bash
-# 리소스 생성
-terraform apply
-
-# 리소스 삭제
-terraform destroy
-```
-
-### 4. 이미지 준비 (실제 배포 시)
-```bash
-# ECR 리포지토리에 이미지 푸시 후 api_image 변수로 이미지 URI를 전달
+# api_image 변수로 컨테이너 이미지 URI를 전달
 terraform plan -var 'api_image=123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/game-log-api:latest'
 ```
 
@@ -181,7 +143,7 @@ terraform plan -var 'api_image=123456789012.dkr.ecr.ap-northeast-2.amazonaws.com
 - **관리 부담 최소화**: 인프라 엔지니어가 EC2 패치, AMI 관리 등에서 해방
 - **초당 과금**: 트래픽 없는 시간에 비용 절감
 - **Auto Scaling과 궁합**: Task 수 조정만으로 수평 확장
-- **EKS는 오버킬**: 과제 스코프에서 K8s 학습 비용 대비 이점 낮음
+- **EKS 대비 단순함**: Kubernetes 운영 복잡도 없이 컨테이너 서비스를 구성할 수 있음
 
 ### 왜 ElastiCache Redis인가 (셀프 호스팅 Redis 대신)
 - **Multi-AZ 자동 페일오버**: Primary 장애 시 Replica가 승격
@@ -192,52 +154,23 @@ terraform plan -var 'api_image=123456789012.dkr.ecr.ap-northeast-2.amazonaws.com
 ### 왜 NAT Gateway (NAT Instance 대신)
 - **관리형 서비스**: 고가용성 자동 보장 (AZ 내 다중화)
 - **처리량 자동 확장**: 최대 45 Gbps
-- **트레이드오프**: 비용이 높음 → 실제 운영에서는 AZ별 1개씩 배치하여 AZ 간 트래픽 비용 최소화
+- **트레이드오프**: NAT Instance보다 비용은 높지만 운영 부담이 낮음
 
 ### 왜 단일 NAT Gateway로 시작하는가
 - 본 Terraform 코드는 **비용 최적화**를 위해 단일 NAT 사용
 - **HA 필요 시**: `aws_nat_gateway`를 AZ 개수만큼 생성하고 `aws_route_table.private`도 AZ별로 분리
-- 실제 프로덕션 이전 시 이 부분을 우선 개선 항목으로 문서화
-
-## 확장 로드맵
-
-### Phase 1 (현재 설계)
-- Multi-AZ ECS + ElastiCache Redis Streams
-- ALB + Auto Scaling
-- CloudWatch 기본 관측성
-
-### Phase 2 (트래픽 증가 시)
-- **Consumer 세분화**: 분석용/아카이빙용/알림용으로 분리
-- **S3 → Athena/Redshift**: 배치 분석 파이프라인
-- **OpenSearch**: 실시간 로그 검색
-
-### Phase 3 (초당 100K+ 도달 시)
-- **ElastiCache → MSK (Kafka)**: 파티셔닝 기반 처리량 확보
-- **Kinesis Data Firehose**: S3 자동 배치 적재
-- **Multi-Region**: DR 및 글로벌 유저 대응
-
+- 트래픽과 가용성 요구가 높아지면 NAT Gateway를 AZ별로 분리
 
 ## 보안 고려사항
 
-| 항목 | 현재 설계 | 프로덕션 강화 방향 |
-|---|---|---|
-| 통신 암호화 | HTTP (ALB) | ACM + HTTPS Listener + TLS 1.3 |
-| ElastiCache | VPC 격리 | Auth Token + In-transit Encryption |
-| IAM | Task Role 기본 | 최소 권한 정책 (S3 특정 prefix만 허용 등) |
-| Secrets | 환경변수 | AWS Secrets Manager 연동 |
-| WAF | 없음 | ALB 앞단 AWS WAF 배치 (Rate Limiting, IP 차단) |
-| VPC Flow Logs | 없음 | 활성화 후 S3/CloudWatch 저장 |
-| GuardDuty | 없음 | 계정 수준 활성화 |
-
-## 비용 최적화 관점
-
-| 리소스 | 현재 설계 | 최적화 방안 |
-|---|---|---|
-| NAT Gateway | 단일 | AZ별 1개 (트래픽 비용 vs 가용성 절충) |
-| ECS Fargate | 온디맨드 | Fargate Spot으로 Consumer 등 무상태 워크로드 실행 |
-| ElastiCache | On-Demand | Reserved Node로 1년/3년 약정 |
-| CloudWatch Logs | 14일 보관 | 장기 보관은 S3 export |
-| S3 아카이빙 | Standard | Lifecycle Policy로 90일 후 Glacier, 365일 후 Deep Archive |
+| 항목 | 구성 |
+|---|---|
+| 네트워크 격리 | API Task와 Redis를 Private Subnet에 배치 |
+| 외부 노출 | ALB만 Public Subnet에 배치 |
+| 접근 제어 | ECS Task는 ALB에서만 8000 포트 수신 |
+| Redis 보호 | Redis는 ECS Task Security Group에서만 6379 포트 수신 |
+| 권한 관리 | ECS Task Execution Role과 Task Role 분리 |
+| 로그 | ECS Task 로그를 CloudWatch Log Group으로 전송 |
 
 ## 관측성 (Observability)
 
@@ -254,7 +187,7 @@ terraform plan -var 'api_image=123456789012.dkr.ecr.ap-northeast-2.amazonaws.com
 
 ### 로그 파이프라인
 ```
-ECS Task → awslogs driver → CloudWatch Log Group → (선택) Kinesis Firehose → S3
+ECS Task → awslogs driver → CloudWatch Log Group
 ```
 
 ## 결론
@@ -264,6 +197,6 @@ ECS Task → awslogs driver → CloudWatch Log Group → (선택) Kinesis Fireho
 - **재현성**: Terraform 코드로 인프라 전체를 코드 관리
 - **확장성**: Multi-AZ + Auto Scaling으로 트래픽 피크 대응
 - **안정성**: 관리형 서비스 활용으로 운영 부담 최소화
-- **점진적 확장**: Phase 1~3 로드맵으로 성장 시나리오 대비
+- **관측성**: CloudWatch Log Group과 Container Insights 구성
 
-과제 스코프상 실제 프로비저닝은 하지 않았으나, `terraform plan` 수준의 코드 완성도를 목표로 작성했습니다.
+Terraform 코드로 네트워크, API 실행 환경, 로드밸런서, 로그 적재 컴포넌트를 재현 가능하게 관리합니다.
