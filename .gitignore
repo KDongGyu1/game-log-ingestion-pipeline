@@ -9,6 +9,7 @@ venv/
 
 
 *.exe
+*.zip
 
 # Terraform
 terraform/.terraform/
