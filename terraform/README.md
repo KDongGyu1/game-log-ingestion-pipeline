@@ -32,7 +32,7 @@
                                    ▼
                        ┌───────────────────────┐
                        │  ElastiCache Redis    │  ← Private Subnet (Multi-AZ)
-                       │  (Streams + AOF)      │     Primary + Replica
+                       │  (Streams + Backup)   │     Primary + Replica
                        │  Multi-AZ Failover    │
                        └───────────┬───────────┘
                                    │  (XREADGROUP)
@@ -103,11 +103,12 @@ terraform/
 ├── security.tf          # Security Group (ALB, ECS, Redis)
 ├── alb.tf               # ALB, Target Group, Listener
 ├── ecs.tf               # ECS Cluster, Task Definition, Service, Auto Scaling, IAM
+├── redis.tf             # ElastiCache Redis, Subnet Group
 ├── outputs.tf           # 출력값
 └── README.md            # 본 문서
 ```
 
-## 코드화 범위 및 설계만 서술한 항목
+## 코드화 범위
 
 ### ✅ Terraform 코드로 구현
 - VPC, Subnet (Public/Private × 2AZ)
@@ -116,13 +117,13 @@ terraform/
 - ALB, Target Group, HTTP Listener
 - ECS Cluster, Task Definition, Service (API)
 - ECS Auto Scaling (CPU 기반)
+- ElastiCache Redis Replication Group (Multi-AZ, Automatic Failover)
 - CloudWatch Log Group
 - IAM Role (ECS Task Execution, Task Role)
 
 ### 📋 설계만 서술 (코드 생략)
 과제 요구인 "일부 핵심 인프라"에 집중하기 위해 아래 항목은 설계만 문서화합니다.
 
-- **ElastiCache Redis**: `aws_elasticache_replication_group` 리소스로 Multi-AZ + Automatic Failover 구성. Security Group은 이미 코드에 정의됨.
 - **Consumer ECS Service**: API Service와 동일한 패턴으로 확장 가능 (Task Definition의 이미지와 command만 다름).
 - **S3 아카이빙**: `aws_s3_bucket` + Lifecycle Policy로 90일 후 Glacier 전환.
 - **Route53**: `aws_route53_record`로 ALB Alias 레코드 생성.
@@ -156,7 +157,7 @@ terraform validate
 terraform fmt
 
 # 실행 계획 확인 (실제 생성 없음)
-terraform plan
+terraform plan -var 'api_image=123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/game-log-api:latest'
 ```
 
 ### 3. 실제 배포 (본 과제에서는 실행하지 않음)
@@ -170,11 +171,8 @@ terraform destroy
 
 ### 4. 이미지 준비 (실제 배포 시)
 ```bash
-# ECR 리포지토리에 이미지 푸시 후
-# variables.tf의 api_image를 실제 ECR URI로 교체
-
-# 예:
-# api_image = "123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/game-log-api:latest"
+# ECR 리포지토리에 이미지 푸시 후 api_image 변수로 이미지 URI를 전달
+terraform plan -var 'api_image=123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/game-log-api:latest'
 ```
 
 ## 주요 설계 판단 근거

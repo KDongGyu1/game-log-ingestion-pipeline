@@ -13,14 +13,6 @@ resource "aws_security_group" "alb" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # 실제 운영에서는 HTTPS(443)만 열고 HTTP는 리다이렉트
-  # ingress {
-  #   from_port   = 443
-  #   to_port     = 443
-  #   protocol    = "tcp"
-  #   cidr_blocks = ["0.0.0.0/0"]
-  # }
-
   egress {
     description = "All outbound"
     from_port   = 0
@@ -62,7 +54,7 @@ resource "aws_security_group" "ecs_task" {
   }
 }
 
-# ---------- ElastiCache Redis Security Group (설계용, 실제 리소스는 별도) ----------
+# ---------- ElastiCache Redis Security Group ----------
 # ECS Task에서만 6379 포트 수신 허용
 resource "aws_security_group" "redis" {
   name        = "${var.project_name}-redis-sg"

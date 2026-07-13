@@ -28,7 +28,6 @@ services:
 
   consumer:
     build: ./consumer
-    container_name: log-consumer
     environment:
       REDIS_HOST: redis
     depends_on:

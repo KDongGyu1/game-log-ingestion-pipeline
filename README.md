@@ -13,7 +13,7 @@
 
 - **API Server (FastAPI)**: `/api/v1/logs` POST 수신 → Redis Stream에 XADD → 즉시 200 반환
 - **Redis Streams**: 메시지 큐 + AOF 영속화. 컨테이너 재시작 시에도 데이터 유지
-- **Consumer**: XREADGROUP으로 읽고 XACK 처리. Consumer Group 기반 유실 방지
+- **Consumer**: XREADGROUP으로 읽고 XACK 처리. 오래 pending 된 메시지는 XAUTOCLAIM으로 회수해 재처리
 
 ## 선택 이유 (Rationale) — B안 (Queue 기반)
 
@@ -42,7 +42,7 @@
 - **Redis List (LPUSH/BRPOP)의 약점**: BRPOP으로 꺼낸 후 처리 전 Consumer 크래시 시 **유실**
 - **Redis Streams의 강점**:
   - Consumer Group 기반 병렬 처리
-  - **XACK 전까지 PEL(Pending Entries List)에 남아 재처리 가능 → 유실 방지**
+  - **XACK 전까지 PEL(Pending Entries List)에 남고, XAUTOCLAIM으로 회수 가능 → 유실 방지**
   - AOF 활성화로 재시작 후 데이터 복구
   - Kafka보다 경량, 과제 스코프에 적합
 - **Kafka는 언제?**: 초당 100K+, 다중 다운스트림 컨슈머, 장기 replay 필요 시. 과제 스코프 초과.
@@ -51,7 +51,7 @@
 
 1. **API → Redis**: XADD 실패 시 503 반환 → 클라이언트 재시도 유도
 2. **Redis 영속성**: AOF 활성화 (`--appendonly yes`)로 재시작 시 복구
-3. **Consumer**: XACK 기반 소비. 처리 실패 시 PEL에 남아 재처리 가능
+3. **Consumer**: XACK 기반 소비. 처리 실패 시 PEL에 남고, 60초 이상 pending 상태인 메시지는 다른 Consumer가 XAUTOCLAIM으로 회수
 
 ## 실행 방법
 
@@ -62,9 +62,15 @@
 
 ### 기동
 
+동료 엔지니어가 처음부터 동일한 테스트 환경을 복제하는 한 줄 명령:
+
 ```bash
-git clone <this-repo>
-cd game-log-ingestion-pipeline
+git clone https://github.com/KDongGyu1/game-log-ingestion-pipeline.git && cd game-log-ingestion-pipeline && docker compose up -d --build
+```
+
+이미 저장소를 받은 상태라면 아래 한 줄로 전체 환경을 기동합니다.
+
+```bash
 docker compose up -d --build
 ```
 
@@ -109,7 +115,7 @@ $ curl -X POST http://localhost:8000/api/v1/logs \
 {"status":"ok","id":"1783653733510-0"}
 ```
 
-### 3) 대량 트래픽 부하 테스트 ⭐
+### 3) 대량 트래픽 부하 테스트
 
 동시 연결 100개로 10,000건 요청:
 
@@ -157,7 +163,7 @@ lag               0
 
 **pending 0, lag 0** → 10,000건 전부 유실 없이 XACK 완료.
 
-### 6) 재시작 후 유실 없음 검증 ⭐
+### 6) 재시작 후 유실 없음 검증
 
 ```
 $ docker exec log-redis redis-cli XLEN game_logs
@@ -175,19 +181,10 @@ $ docker exec log-redis redis-cli XLEN game_logs
 
 | 장애 상황 | 동작 | 결과 |
 |---|---|---|
-| Consumer 크래시 | XACK 안 됨 → PEL 잔류 | 재시작 시 Consumer Group이 PEL 재처리 |
+| Consumer 크래시 | XACK 안 됨 → PEL 잔류 | 재시작 또는 다른 Consumer가 XAUTOCLAIM으로 회수 후 재처리 |
 | Redis 재시작 | AOF에서 복구 | 최대 1초 유실 (`appendfsync everysec` 기본값) |
 | API 크래시 | 진행 중 요청만 실패 | 클라이언트 재시도로 복구 |
 | Redis 완전 다운 | API가 503 반환 | 클라이언트 재시도 필요 |
-
-## 운영 확장안
-
-과제 스코프를 넘어선 실제 프로덕션 환경에서 "초당 수만 건" 달성 경로:
-
-### API 서버 수평 확장
-- Uvicorn workers를 vCPU 수만큼 (`--workers N`)
-- `redis.asyncio`로 비동기 I/O 전환
-- ECS Fargate + ALB로 인스
 
 ## 운영 확장안
 
@@ -243,6 +240,7 @@ Consumer Group이 자동으로 메시지를 분산 소비합니다.
     ├── security.tf
     ├── alb.tf
     ├── ecs.tf
+    ├── redis.tf
     └── outputs.tf
 
 ## 기술 스택

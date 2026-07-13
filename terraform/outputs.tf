@@ -37,3 +37,8 @@ output "cloudwatch_log_group" {
   description = "API 로그가 저장되는 CloudWatch Log Group"
   value       = aws_cloudwatch_log_group.api.name
 }
+
+output "redis_primary_endpoint" {
+  description = "ElastiCache Redis primary endpoint"
+  value       = aws_elasticache_replication_group.redis.primary_endpoint_address
+}

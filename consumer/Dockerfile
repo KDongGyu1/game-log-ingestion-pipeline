@@ -7,4 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY consumer.py .
 
+RUN useradd --create-home --shell /usr/sbin/nologin appuser
+USER appuser
+
 CMD ["python", "-u", "consumer.py"]

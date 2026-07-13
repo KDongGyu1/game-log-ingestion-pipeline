@@ -31,25 +31,11 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# ---------- ECS Task Role (애플리케이션용) ----------
-# 실제 앱에서 AWS API 호출 시 사용 (예: S3, Secrets Manager 등)
+# ---------- ECS Task Role ----------
 resource "aws_iam_role" "ecs_task" {
   name               = "${var.project_name}-ecs-task-role"
   assume_role_policy = data.aws_iam_policy_document.ecs_task_assume.json
 }
-
-# 예시: S3 아카이빙이 필요한 Consumer용 정책 (필요 시 확장)
-# resource "aws_iam_role_policy" "ecs_task_s3" {
-#   role = aws_iam_role.ecs_task.id
-#   policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [{
-#       Effect   = "Allow"
-#       Action   = ["s3:PutObject"]
-#       Resource = "arn:aws:s3:::game-log-archive/*"
-#     }]
-#   })
-# }
 
 # ---------- ECS Cluster ----------
 resource "aws_ecs_cluster" "main" {
@@ -90,8 +76,7 @@ resource "aws_ecs_task_definition" "api" {
       ]
 
       environment = [
-        # 실제 배포 시 ElastiCache 엔드포인트 주입
-        { name = "REDIS_HOST", value = "REPLACE_WITH_ELASTICACHE_ENDPOINT" },
+        { name = "REDIS_HOST", value = aws_elasticache_replication_group.redis.primary_endpoint_address },
         { name = "REDIS_PORT", value = "6379" },
         { name = "STREAM_KEY", value = "game_logs" }
       ]

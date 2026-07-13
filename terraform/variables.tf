@@ -45,7 +45,6 @@ variable "private_subnet_cidrs" {
 variable "api_image" {
   description = "API 서버 컨테이너 이미지 (ECR URI)"
   type        = string
-  default     = "PLACEHOLDER_ECR_URI/game-log-api:latest"
 }
 
 variable "api_container_port" {
@@ -70,4 +69,11 @@ variable "api_memory" {
   description = "API Task 메모리 (MiB)"
   type        = number
   default     = 1024
+}
+
+# ---- Redis ----
+variable "redis_node_type" {
+  description = "ElastiCache Redis node type"
+  type        = string
+  default     = "cache.t4g.micro"
 }

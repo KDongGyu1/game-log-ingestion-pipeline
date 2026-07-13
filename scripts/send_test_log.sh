@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# 단건 로그 전송 테스트
 set -euo pipefail
 
 URL="${URL:-http://localhost:8000/api/v1/logs}"

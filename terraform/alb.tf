@@ -6,7 +6,7 @@ resource "aws_lb" "api" {
   security_groups    = [aws_security_group.alb.id]
   subnets            = aws_subnet.public[*].id
 
-  enable_deletion_protection = false # 운영 환경에서는 true 권장
+  enable_deletion_protection = false
 
   tags = {
     Name = "${var.project_name}-alb"
@@ -52,16 +52,3 @@ resource "aws_lb_listener" "http" {
   }
 }
 
-# 실제 운영에서는 HTTPS Listener + ACM 인증서 사용
-# resource "aws_lb_listener" "https" {
-#   load_balancer_arn = aws_lb.api.arn
-#   port              = 443
-#   protocol          = "HTTPS"
-#   ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
-#   certificate_arn   = var.acm_certificate_arn
-#
-#   default_action {
-#     type             = "forward"
-#     target_group_arn = aws_lb_target_group.api.arn
-#   }
-# }
