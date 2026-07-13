@@ -1,8 +1,6 @@
 import json
 import logging
 import os
-from datetime import datetime, timezone
-from pathlib import Path
 
 import redis
 
@@ -14,7 +12,6 @@ REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 STREAM_KEY = os.getenv("STREAM_KEY", "game_logs")
 GROUP_NAME = os.getenv("GROUP_NAME", "log_consumers")
 CONSUMER_NAME = os.getenv("CONSUMER_NAME", "consumer-1")
-OUTPUT_PATH = Path(os.getenv("OUTPUT_PATH", "/logs/game_logs.jsonl"))
 
 
 def ensure_group(client: redis.Redis) -> None:
@@ -29,37 +26,28 @@ def ensure_group(client: redis.Redis) -> None:
 
 
 def main():
-    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
     ensure_group(client)
     logger.info(f"consumer started: stream={STREAM_KEY} group={GROUP_NAME}")
 
+    processed = 0
     while True:
         resp = client.xreadgroup(
             groupname=GROUP_NAME,
             consumername=CONSUMER_NAME,
             streams={STREAM_KEY: ">"},
-            count=100,
+            count=1000,
             block=5000,
         )
         if not resp:
             continue
 
         for _stream, entries in resp:
-            ack_ids = []
-            with OUTPUT_PATH.open("a", encoding="utf-8") as f:
-                for entry_id, fields in entries:
-                    record = {
-                        "stream_id": entry_id,
-                        "received_at": datetime.now(timezone.utc).isoformat(),
-                        "data": json.loads(fields.get("data", "{}")),
-                    }
-                    f.write(json.dumps(record, ensure_ascii=False) + "\n")
-                    ack_ids.append(entry_id)
-
-            if ack_ids:
-                client.xack(STREAM_KEY, GROUP_NAME, *ack_ids)
-                logger.info(f"acked {len(ack_ids)} messages")
+            ack_ids = [entry_id for entry_id, _ in entries]
+            client.xack(STREAM_KEY, GROUP_NAME, *ack_ids)
+            processed += len(ack_ids)
+            if processed % 1000 == 0 or len(ack_ids) < 1000:
+                logger.info(f"consumed total={processed} (batch={len(ack_ids)})")
 
 
 if __name__ == "__main__":
