@@ -9,7 +9,7 @@ resource "aws_vpc" "main" {
   }
 }
 
-# ---------- Internet Gateway ----------
+# ---------- 인터넷 게이트웨이 ----------
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
@@ -18,7 +18,7 @@ resource "aws_internet_gateway" "main" {
   }
 }
 
-# ---------- Public Subnets (Multi-AZ) ----------
+# ---------- Public Subnet ----------
 resource "aws_subnet" "public" {
   count = length(var.public_subnet_cidrs)
 
@@ -33,7 +33,7 @@ resource "aws_subnet" "public" {
   }
 }
 
-# ---------- Private Subnets (Multi-AZ) ----------
+# ---------- Private Subnet ----------
 resource "aws_subnet" "private" {
   count = length(var.private_subnet_cidrs)
 
@@ -48,7 +48,7 @@ resource "aws_subnet" "private" {
 }
 
 # ---------- NAT Gateway ----------
-# A single NAT Gateway keeps the sample architecture cost-conscious.
+# 비용을 고려해 단일 NAT Gateway로 구성합니다.
 resource "aws_eip" "nat" {
   domain = "vpc"
 
@@ -68,7 +68,7 @@ resource "aws_nat_gateway" "main" {
   depends_on = [aws_internet_gateway.main]
 }
 
-# ---------- Route Tables ----------
+# ---------- 라우팅 테이블 ----------
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 

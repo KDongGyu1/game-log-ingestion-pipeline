@@ -15,7 +15,7 @@
 - **Redis Streams**: 메시지 큐 + AOF 영속화. 컨테이너 재시작 시에도 데이터 유지
 - **Consumer**: XREADGROUP으로 읽고 XACK 처리. 오래 pending 된 메시지는 XAUTOCLAIM으로 회수해 재처리
 
-## 선택 이유 (Rationale) — B안 (Queue 기반)
+## 선택 이유 — B안 (Queue 기반)
 
 ### 시나리오 분석
 
@@ -25,11 +25,11 @@
 - **안정적, 유실 없는 적재**
 - **대량의 글로벌 트래픽 대응**
 
-이 조건에서 핵심은 **API 응답성과 저장소 처리의 분리(decoupling)**입니다. 저장소 지연이 API 응답에 그대로 전파되면 트래픽 피크에서 API가 붕괴합니다.
+이 조건에서 핵심은 **API 응답성과 저장소 처리의 분리**입니다. 저장소 지연이 API 응답에 그대로 전파되면 트래픽 피크에서 API가 붕괴합니다.
 
-### 대안 비교 (인프라 엔지니어 관점)
+### 대안 비교
 
-| 항목 | A안 (File 직접) | **B안 (Queue)** | C안 (DB 직접) |
+| 항목 | A안 (File) | **B안 (Queue)** | C안 (DB) |
 |---|---|---|---|
 | API 응답성 | 디스크 I/O에 묶임 | **큐잉 후 즉시 응답** | DB 쓰기에 묶임 |
 | 트래픽 피크 흡수 | ❌ | **✅ Queue 버퍼링** | ❌ DB 부하 직결 |
@@ -37,12 +37,12 @@
 | 수평 확장 | 파일락 이슈 | **✅ Consumer 확장** | DB 부하 병목 |
 | 유실 방지 | flush 정책 의존 | **✅ ACK 기반 재처리** | 트랜잭션 실패 시 유실 |
 
-### 왜 Redis Streams인가 (List / Kafka 대신)
+### 왜 Redis Streams인가
 
 - **Redis List (LPUSH/BRPOP)의 약점**: BRPOP으로 꺼낸 후 처리 전 Consumer 크래시 시 **유실**
 - **Redis Streams의 강점**:
   - Consumer Group 기반 병렬 처리
-  - **XACK 전까지 PEL(Pending Entries List)에 남고, XAUTOCLAIM으로 회수 가능 → 유실 방지**
+  - **XACK 전까지 PEL에 남고, XAUTOCLAIM으로 회수 가능 → 유실 방지**
   - AOF 활성화로 재시작 후 데이터 복구
   - Kafka보다 구성이 단순해 Docker Compose 테스트 환경에서 재현성이 높음
 - **Kafka 전환 기준**: 초당 100K+ 처리량, 다중 다운스트림, 장기 replay가 필요해지는 시점
@@ -209,7 +209,7 @@ $ docker exec log-redis redis-cli XLEN game_logs
 - Redis Exporter로 큐 길이, PEL 크기 모니터링
 - API 서버 p95/p99 레이턴시 알람
 
-### 수평 확장 (현재 스택에서 즉시 가능)
+### 수평 확장
 ```bash
 docker compose up -d --scale consumer=3
 ```

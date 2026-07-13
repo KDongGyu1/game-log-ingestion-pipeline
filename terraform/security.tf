@@ -1,5 +1,5 @@
-# ---------- ALB Security Group ----------
-# Receives HTTP traffic from the internet.
+# ---------- ALB 보안 그룹 ----------
+# 외부 HTTP 트래픽을 받는 보안 그룹입니다.
 resource "aws_security_group" "alb" {
   name        = "${var.project_name}-alb-sg"
   description = "Security group for ALB"
@@ -26,8 +26,8 @@ resource "aws_security_group" "alb" {
   }
 }
 
-# ---------- ECS Task Security Group ----------
-# Receives API traffic only from the ALB.
+# ---------- ECS Task 보안 그룹 ----------
+# ALB에서 들어오는 API 트래픽만 허용합니다.
 resource "aws_security_group" "ecs_task" {
   name        = "${var.project_name}-ecs-task-sg"
   description = "Security group for ECS API tasks"
@@ -54,8 +54,8 @@ resource "aws_security_group" "ecs_task" {
   }
 }
 
-# ---------- ElastiCache Redis Security Group ----------
-# Allows Redis traffic only from ECS tasks.
+# ---------- ElastiCache Redis 보안 그룹 ----------
+# ECS Task에서 들어오는 Redis 트래픽만 허용합니다.
 resource "aws_security_group" "redis" {
   name        = "${var.project_name}-redis-sg"
   description = "Security group for ElastiCache Redis"

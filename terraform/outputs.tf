@@ -14,7 +14,7 @@ output "private_subnet_ids" {
 }
 
 output "alb_dns_name" {
-  description = "ALB DNS name"
+  description = "ALB DNS 이름"
   value       = aws_lb.api.dns_name
 }
 
@@ -24,17 +24,17 @@ output "alb_zone_id" {
 }
 
 output "ecs_cluster_name" {
-  description = "ECS cluster name"
+  description = "ECS 클러스터 이름"
   value       = aws_ecs_cluster.main.name
 }
 
 output "ecs_service_name" {
-  description = "ECS API service name"
+  description = "ECS API 서비스 이름"
   value       = aws_ecs_service.api.name
 }
 
 output "cloudwatch_log_group" {
-  description = "CloudWatch log group for API logs"
+  description = "API 로그용 CloudWatch Log Group"
   value       = aws_cloudwatch_log_group.api.name
 }
 

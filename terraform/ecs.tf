@@ -1,4 +1,4 @@
-# ---------- CloudWatch Log Group ----------
+# ---------- CloudWatch 로그 그룹 ----------
 resource "aws_cloudwatch_log_group" "api" {
   name              = "/ecs/${var.project_name}/api"
   retention_in_days = 14
@@ -8,8 +8,8 @@ resource "aws_cloudwatch_log_group" "api" {
   }
 }
 
-# ---------- ECS Task Execution Role ----------
-# Allows ECS tasks to pull images and write CloudWatch logs.
+# ---------- ECS Task 실행 역할 ----------
+# ECS Task가 이미지를 pull하고 CloudWatch Logs에 로그를 쓸 수 있도록 합니다.
 data "aws_iam_policy_document" "ecs_task_assume" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -31,13 +31,13 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# ---------- ECS Task Role ----------
+# ---------- ECS Task 역할 ----------
 resource "aws_iam_role" "ecs_task" {
   name               = "${var.project_name}-ecs-task-role"
   assume_role_policy = data.aws_iam_policy_document.ecs_task_assume.json
 }
 
-# ---------- ECS Cluster ----------
+# ---------- ECS 클러스터 ----------
 resource "aws_ecs_cluster" "main" {
   name = "${var.project_name}-cluster"
 
@@ -51,7 +51,7 @@ resource "aws_ecs_cluster" "main" {
   }
 }
 
-# ---------- ECS Task Definition ----------
+# ---------- ECS Task 정의 ----------
 resource "aws_ecs_task_definition" "api" {
   family                   = "${var.project_name}-api"
   network_mode             = "awsvpc"
@@ -105,7 +105,7 @@ resource "aws_ecs_task_definition" "api" {
   }
 }
 
-# ---------- ECS Service ----------
+# ---------- ECS 서비스 ----------
 resource "aws_ecs_service" "api" {
   name            = "${var.project_name}-api-svc"
   cluster         = aws_ecs_cluster.main.id
@@ -125,7 +125,7 @@ resource "aws_ecs_service" "api" {
     container_port   = var.api_container_port
   }
 
-  # Rolling deployment settings.
+  # 롤링 배포 설정입니다.
   deployment_minimum_healthy_percent = 50
   deployment_maximum_percent         = 200
 
@@ -136,7 +136,7 @@ resource "aws_ecs_service" "api" {
   }
 }
 
-# ---------- Auto Scaling ----------
+# ---------- Auto Scaling 설정 ----------
 resource "aws_appautoscaling_target" "api" {
   max_capacity       = 10
   min_capacity       = var.api_desired_count

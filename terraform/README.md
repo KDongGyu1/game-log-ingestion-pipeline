@@ -139,24 +139,24 @@ terraform plan -var 'api_image=123456789012.dkr.ecr.ap-northeast-2.amazonaws.com
 
 ## 주요 설계 판단 근거
 
-### 왜 ECS Fargate인가 (EC2 대신)
+### 왜 EC2 대신 ECS Fargate인가 
 - **관리 부담 최소화**: 인프라 엔지니어가 EC2 패치, AMI 관리 등에서 해방
 - **초당 과금**: 트래픽 없는 시간에 비용 절감
 - **Auto Scaling과 궁합**: Task 수 조정만으로 수평 확장
 - **EKS 대비 단순함**: Kubernetes 운영 복잡도 없이 컨테이너 서비스를 구성할 수 있음
 
-### 왜 ElastiCache Redis인가 (셀프 호스팅 Redis 대신)
+### 셀프 호스팅 Redis 대신 ElastiCache Redis 사용 
 - **Multi-AZ 자동 페일오버**: Primary 장애 시 Replica가 승격
 - **자동 백업**: 스냅샷 자동 생성 및 S3 저장
 - **패치/업그레이드 관리**: AWS가 무중단 유지보수 수행
 - **모니터링 통합**: CloudWatch 메트릭 기본 제공
 
-### 왜 NAT Gateway (NAT Instance 대신)
+### NAT Gateway 설정 이유
 - **관리형 서비스**: 고가용성 자동 보장 (AZ 내 다중화)
 - **처리량 자동 확장**: 최대 45 Gbps
 - **트레이드오프**: NAT Instance보다 비용은 높지만 운영 부담이 낮음
 
-### 왜 단일 NAT Gateway로 시작하는가
+### 단일 NAT Gateway 설정 이유
 - 본 Terraform 코드는 **비용 최적화**를 위해 단일 NAT 사용
 - **HA 필요 시**: `aws_nat_gateway`를 AZ 개수만큼 생성하고 `aws_route_table.private`도 AZ별로 분리
 - 트래픽과 가용성 요구가 높아지면 NAT Gateway를 AZ별로 분리
@@ -172,7 +172,7 @@ terraform plan -var 'api_image=123456789012.dkr.ecr.ap-northeast-2.amazonaws.com
 | 권한 관리 | ECS Task Execution Role과 Task Role 분리 |
 | 로그 | ECS Task 로그를 CloudWatch Log Group으로 전송 |
 
-## 관측성 (Observability)
+## 관측성
 
 ### CloudWatch Metrics
 - **ALB**: `RequestCount`, `TargetResponseTime`, `HTTPCode_Target_5XX_Count`

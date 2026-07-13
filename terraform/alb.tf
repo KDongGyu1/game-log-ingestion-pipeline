@@ -1,4 +1,4 @@
-# ---------- Application Load Balancer ----------
+# ---------- 애플리케이션 로드 밸런서 ----------
 resource "aws_lb" "api" {
   name               = "${var.project_name}-alb"
   internal           = false
@@ -13,7 +13,7 @@ resource "aws_lb" "api" {
   }
 }
 
-# ---------- Target Group ----------
+# ---------- 대상 그룹 ----------
 resource "aws_lb_target_group" "api" {
   name        = "${var.project_name}-api-tg"
   port        = var.api_container_port
@@ -32,7 +32,7 @@ resource "aws_lb_target_group" "api" {
     unhealthy_threshold = 3
   }
 
-  # Wait time before deregistering ECS task targets.
+  # ECS Task target을 등록 해제하기 전 대기 시간입니다.
   deregistration_delay = 30
 
   tags = {
@@ -40,7 +40,7 @@ resource "aws_lb_target_group" "api" {
   }
 }
 
-# ---------- Listener ----------
+# ---------- 리스너 ----------
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.api.arn
   port              = 80
